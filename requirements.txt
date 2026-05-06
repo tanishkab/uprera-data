@@ -1,0 +1,9 @@
+pyotp
+requests
+pandas
+numpy
+reportlab
+gtts
+pyttsx3
+smartapi-python
+urllib3

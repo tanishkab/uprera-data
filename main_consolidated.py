@@ -10,8 +10,54 @@ NIFTY AUTO TRADER — FULLY AUTOMATIC
 - Paper + Live trading
 - Sirf conditions change karne ka option
 
-Run: py app.py
+Setup:
+    pip install pyotp requests pandas numpy reportlab gtts pyttsx3 smartapi-python
+
+Run:
+    python main_consolidated.py
 """
+
+# ═══════════════════════════════════════════════════════════════════
+#  SSL CERTIFICATE FIX FOR macOS
+# ═══════════════════════════════════════════════════════════════════
+import os
+import ssl
+import warnings
+
+# Disable SSL warnings
+warnings.filterwarnings('ignore')
+os.environ['PYTHONHTTPSVERIFY'] = '0'
+ssl._create_default_https_context = ssl._create_unverified_context
+
+# Disable urllib3 warnings
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+# Monkey patch requests to disable SSL verification globally
+import requests
+_original_request = requests.Session.request
+_original_get = requests.get
+_original_post = requests.post
+
+def patched_request(self, method, url, **kwargs):
+    kwargs['verify'] = False
+    return _original_request(self, method, url, **kwargs)
+
+def patched_get(url, **kwargs):
+    kwargs['verify'] = False
+    return _original_get(url, **kwargs)
+
+def patched_post(url, **kwargs):
+    kwargs['verify'] = False
+    return _original_post(url, **kwargs)
+
+requests.Session.request = patched_request
+requests.get = patched_get
+requests.post = patched_post
+
+# ═══════════════════════════════════════════════════════════════════
+#  MAIN APPLICATION
+# ═══════════════════════════════════════════════════════════════════
 
 import tkinter as tk
 from tkinter import ttk, scrolledtext, messagebox

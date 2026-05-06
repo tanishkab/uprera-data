@@ -149,3 +149,74 @@
 2026-05-06 14:50:17,494 Fetched 151 candles: NIFTY 50
 2026-05-06 14:50:17,633 Fetched 151 candles: NIFTY 50_FUT
 2026-05-06 14:50:17,634 Future volume used | vol_ok: 49/151
+2026-05-06 14:54:03,127 Fetched 150 candles: NIFTY 50
+2026-05-06 14:54:03,282 Fetched 150 candles: NIFTY 50_FUT
+2026-05-06 14:54:03,287 Future volume used | vol_ok: 46/150
+2026-05-06 14:55:17,976 Fetched 151 candles: NIFTY 50
+2026-05-06 14:55:18,125 Fetched 151 candles: NIFTY 50_FUT
+2026-05-06 14:55:18,128 Future volume used | vol_ok: 46/151
+2026-05-06 14:59:03,662 Fetched 150 candles: NIFTY 50
+2026-05-06 14:59:03,806 Fetched 150 candles: NIFTY 50_FUT
+2026-05-06 14:59:03,808 Future volume used | vol_ok: 45/150
+2026-05-06 15:00:18,479 Fetched 151 candles: NIFTY 50
+2026-05-06 15:00:18,605 Fetch NIFTY 50_FUT: Couldn't parse the JSON response received from the server: b'Access denied because of exceeding access rate'
+2026-05-06 15:00:18,607 Volume filter disabled (index spot data, no volume)
+2026-05-06 15:03:30,584 Ready! Symbol chuno -> Mode chuno -> START dabaao
+2026-05-06 15:03:30,585 Tokens auto-refresh honge (Future monthly, Option weekly)
+2026-05-06 15:03:36,423 Logging into Angel One...
+2026-05-06 15:03:36,786 Angel One login OK
+2026-05-06 15:03:36,786 Login Successful!
+2026-05-06 15:03:36,787 Refreshing tokens from API...
+2026-05-06 15:03:36,787 Token refresh: 2026-05-06 (expiry: 2026-05-07)
+2026-05-06 15:03:36,787 Token refresh: 2026-05-06 (expiry: 2026-05-07)
+2026-05-06 15:03:36,787 Token refresh ho raha hai Angel API se...
+2026-05-06 15:03:36,787 Token refresh ho raha hai Angel API se...
+2026-05-06 15:03:46,806 Scrip master loaded: 171817 tokens
+2026-05-06 15:03:46,806 Scrip master loaded: 171817 tokens
+2026-05-06 15:03:46,964 Future token: NIFTY 50 -> NIFTY (66071)
+2026-05-06 15:03:46,964 Future token: NIFTY 50 -> NIFTY (66071)
+2026-05-06 15:03:46,964 Future token: FINNIFTY -> FINNIFTY (66069)
+2026-05-06 15:03:46,965 Future token: FINNIFTY -> FINNIFTY (66069)
+2026-05-06 15:03:46,965 Future token: MIDCPNIFTY -> MIDCPNIFTY (66070)
+2026-05-06 15:03:46,965 Future token: MIDCPNIFTY -> MIDCPNIFTY (66070)
+2026-05-06 15:03:46,965 Future token: BANKNIFTY -> BANKNIFTY (66068)
+2026-05-06 15:03:46,965 Future token: BANKNIFTY -> BANKNIFTY (66068)
+2026-05-06 15:03:46,965 Option tokens: 424 (week expiry: 2026-05-07)
+2026-05-06 15:03:46,966 Option tokens: 424 (week expiry: 2026-05-07)
+2026-05-06 15:03:46,982 Tokens updated successfully.
+2026-05-06 15:03:46,982 Telegram bot active.
+2026-05-06 15:03:46,987 Trading loop: NIFTY 50 | PAPER
+2026-05-06 15:03:48,222 Fetched 150 candles: NIFTY 50
+2026-05-06 15:03:48,364 Fetched 150 candles: NIFTY 50_FUT
+2026-05-06 15:03:48,368 Future volume used | vol_ok: 43/150
+2026-05-06 15:08:48,805 Fetched 150 candles: NIFTY 50
+2026-05-06 15:08:48,940 Fetched 150 candles: NIFTY 50_FUT
+2026-05-06 15:08:48,942 Future volume used | vol_ok: 41/150
+2026-05-06 15:11:12,277 Ready! Symbol chuno -> Mode chuno -> START dabaao
+2026-05-06 15:11:12,278 Tokens auto-refresh honge (Future monthly, Option weekly)
+2026-05-06 15:11:14,546 Logging into Angel One...
+2026-05-06 15:11:14,904 Angel One login OK
+2026-05-06 15:11:14,904 Login Successful!
+2026-05-06 15:11:14,904 Refreshing tokens from API...
+2026-05-06 15:11:14,905 Token refresh: 2026-05-06 (expiry: 2026-05-07)
+2026-05-06 15:11:14,905 Token refresh: 2026-05-06 (expiry: 2026-05-07)
+2026-05-06 15:11:14,905 Token refresh ho raha hai Angel API se...
+2026-05-06 15:11:14,905 Token refresh ho raha hai Angel API se...
+2026-05-06 15:11:24,838 Scrip master loaded: 171817 tokens
+2026-05-06 15:11:24,839 Scrip master loaded: 171817 tokens
+2026-05-06 15:11:24,992 Future token: NIFTY 50 -> NIFTY (66071)
+2026-05-06 15:11:24,993 Future token: NIFTY 50 -> NIFTY (66071)
+2026-05-06 15:11:24,993 Future token: FINNIFTY -> FINNIFTY (66069)
+2026-05-06 15:11:24,993 Future token: FINNIFTY -> FINNIFTY (66069)
+2026-05-06 15:11:24,993 Future token: MIDCPNIFTY -> MIDCPNIFTY (66070)
+2026-05-06 15:11:24,994 Future token: MIDCPNIFTY -> MIDCPNIFTY (66070)
+2026-05-06 15:11:24,994 Future token: BANKNIFTY -> BANKNIFTY (66068)
+2026-05-06 15:11:24,994 Future token: BANKNIFTY -> BANKNIFTY (66068)
+2026-05-06 15:11:24,994 Option tokens: 424 (week expiry: 2026-05-07)
+2026-05-06 15:11:24,995 Option tokens: 424 (week expiry: 2026-05-07)
+2026-05-06 15:11:25,010 Tokens updated successfully.
+2026-05-06 15:11:25,011 Telegram bot active.
+2026-05-06 15:11:25,017 Trading loop: NIFTY 50 | PAPER
+2026-05-06 15:11:26,100 Fetched 150 candles: NIFTY 50
+2026-05-06 15:11:26,237 Fetched 150 candles: NIFTY 50_FUT
+2026-05-06 15:11:26,241 Future volume used | vol_ok: 41/150
