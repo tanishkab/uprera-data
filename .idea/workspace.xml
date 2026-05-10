@@ -5,25 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="bbecd125-8990-4705-910d-2695ced135a8" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/scrapper.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/scrapper_pap.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/DEPLOY.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/DEPLOYMENT_GUIDE.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/FEATURES.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/LAUNCH_NOW.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/PREMIUM_VERIFICATION.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/PRE_LIVE_CHECKLIST.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/QUICKREF.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/QUICK_START.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/STREAMLIT_REAL_PREMIUMS.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/SUMMARY.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/app_streamlit.py" beforeDir="false" afterPath="$PROJECT_DIR$/app_streamlit.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/requirements_streamlit.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/start_trader.sh" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/start_web.sh" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/trader.log" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -86,7 +68,7 @@
       <updated>1777141554301</updated>
       <workItem from="1777141555831" duration="8000" />
       <workItem from="1777141614459" duration="12000" />
-      <workItem from="1777141913818" duration="32125000" />
+      <workItem from="1777141913818" duration="36324000" />
     </task>
     <servers />
   </component>
