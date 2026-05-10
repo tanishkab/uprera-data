@@ -9,11 +9,12 @@ Requirements:
     pip install selenium webdriver-manager pandas reportlab
 
 Usage:
-    python3 scrapper_district.py [num_agents] [headless]
+    python3 scrapper_district.py [num_agents] [offset] [headless]
 
 Examples:
-    python3 scrapper_district.py 10 headless    # Scrape 10 agents in headless mode
-    python3 scrapper_district.py 5              # Scrape 5 agents with visible browser
+    python3 scrapper_district.py 10 0 headless  # Scrape 10 agents starting from first agent in headless mode
+    python3 scrapper_district.py 5 20           # Scrape 5 agents starting from 21st agent with visible browser
+    python3 scrapper_district.py all 100        # Scrape all agents starting from 101st agent
     python3 scrapper_district.py                # Interactive mode
 """
 
@@ -353,7 +354,7 @@ class UPRERAScraperAgent:
             traceback.print_exc()
             return [], []
 
-    def get_agents_for_district(self, district_name, agent_district_map, num_agents):
+    def get_agents_for_district(self, district_name, agent_district_map, num_agents, offset=0):
         """Get row indices of agents belonging to a specific district"""
         print(f"\n🎯 Step 6: Finding agents for district: {district_name}")
 
@@ -370,6 +371,14 @@ class UPRERAScraperAgent:
                     matching_agents.append(item['row_index'])
 
         print(f"  ✅ Found {len(matching_agents)} agents in {district_name}")
+
+        # Apply offset first
+        if offset > 0:
+            if offset >= len(matching_agents):
+                print(f"  ⚠️  Offset {offset} is greater than or equal to total agents {len(matching_agents)}")
+                return []
+            matching_agents = matching_agents[offset:]
+            print(f"  ✅ Applied offset of {offset}, {len(matching_agents)} agents remaining")
 
         # Limit to requested number (unless num_agents is -1, meaning "all")
         if num_agents == -1:
@@ -874,7 +883,7 @@ def display_districts_menu(districts):
 
 
 def get_user_input():
-    """Get number of agents from user via command line"""
+    """Get number of agents and offset from user via command line"""
     print("\n" + "=" * 70)
     print("  🎯 AGENT SCRAPING CONFIGURATION")
     print("=" * 70)
@@ -893,13 +902,21 @@ def get_user_input():
             num_agents = 10
             print(f"\n✅ Will scrape {num_agents} agents")
 
-        headless_input = input("Run in headless mode? (y/n, default: y): ").strip().lower()
+        offset_input = input("\nOffset (skip first N agents, default: 0): ").strip()
+        if offset_input:
+            offset = int(offset_input)
+            print(f"\n✅ Will skip first {offset} agents")
+        else:
+            offset = 0
+            print(f"\n✅ Starting from first agent (no offset)")
+
+        headless_input = input("\nRun in headless mode? (y/n, default: y): ").strip().lower()
         headless = headless_input not in ['n', 'no', 'false', '0']  # Default to yes unless explicitly no
 
         print(f"✅ Headless mode: {'ON' if headless else 'OFF'}")
         print("=" * 70)
 
-        return num_agents, headless
+        return num_agents, offset, headless
 
     except (ValueError, KeyboardInterrupt):
         print("\n❌ Invalid input or cancelled by user")
@@ -928,17 +945,31 @@ def main():
                 num_agents = int(sys.argv[1])
                 print(f"\n✅ CLI Mode: Will scrape {num_agents} agents")
 
-            headless = len(sys.argv) > 2 and sys.argv[2].lower() == 'headless'
+            # Check for offset parameter
+            if len(sys.argv) > 2:
+                # Check if second arg is 'headless' or a number
+                if sys.argv[2].lower() == 'headless':
+                    offset = 0
+                    headless = True
+                else:
+                    offset = int(sys.argv[2])
+                    print(f"✅ Offset: {offset} agents")
+                    headless = len(sys.argv) > 3 and sys.argv[3].lower() == 'headless'
+            else:
+                offset = 0
+                headless = False
+
             print(f"✅ Headless mode: {'ON' if headless else 'OFF'}")
             print("=" * 70)
         except ValueError:
-            print("\n❌ Invalid argument. Usage: python3 scrapper_district.py [num_agents|all] [headless]")
-            print("   Example: python3 scrapper_district.py 10 headless")
-            print("   Example: python3 scrapper_district.py all headless")
+            print("\n❌ Invalid argument. Usage: python3 scrapper_district.py [num_agents|all] [offset] [headless]")
+            print("   Example: python3 scrapper_district.py 10 0 headless")
+            print("   Example: python3 scrapper_district.py 5 20")
+            print("   Example: python3 scrapper_district.py all 100 headless")
             sys.exit(1)
     else:
         # Get user input via CLI
-        num_agents, headless = get_user_input()
+        num_agents, offset, headless = get_user_input()
 
     # Initialize agent
     agent = UPRERAScraperAgent(headless=headless)
@@ -974,7 +1005,7 @@ def main():
                 return
 
             # Get agents for the selected district
-            agent_row_indices = agent.get_agents_for_district(selected_district, agent_district_map, num_agents)
+            agent_row_indices = agent.get_agents_for_district(selected_district, agent_district_map, num_agents, offset)
         else:
             # No district filtering - extract all agents directly
             print("\n✅ Skipping district filtering - will scrape agents sequentially")
@@ -992,15 +1023,21 @@ def main():
                 total_agents = len(data_rows)
                 print(f"  ✅ Found {total_agents} total agents in table")
 
-                # Create simple list of row indices
-                if num_agents == -1:
-                    # Scrape all agents
-                    agent_row_indices = list(range(total_agents))
-                    print(f"  ✅ Will scrape ALL {len(agent_row_indices)} agents")
+                # Apply offset
+                if offset >= total_agents:
+                    print(f"  ⚠️  Offset {offset} is greater than or equal to total agents {total_agents}")
+                    agent_row_indices = []
                 else:
-                    # Limit to requested number
-                    agent_row_indices = list(range(min(num_agents, total_agents)))
-                    print(f"  ✅ Will scrape first {len(agent_row_indices)} agents")
+                    # Create simple list of row indices with offset
+                    if num_agents == -1:
+                        # Scrape all agents starting from offset
+                        agent_row_indices = list(range(offset, total_agents))
+                        print(f"  ✅ Will scrape ALL {len(agent_row_indices)} agents (starting from agent {offset + 1})")
+                    else:
+                        # Limit to requested number starting from offset
+                        end_index = min(offset + num_agents, total_agents)
+                        agent_row_indices = list(range(offset, end_index))
+                        print(f"  ✅ Will scrape {len(agent_row_indices)} agents (from agent {offset + 1} to agent {end_index})")
             except Exception as e:
                 print(f"  ❌ Error getting agent rows: {e}")
                 return
