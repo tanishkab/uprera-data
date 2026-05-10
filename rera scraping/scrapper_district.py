@@ -362,8 +362,10 @@ class UPRERAScraperAgent:
 
         print(f"  ✅ Found {len(matching_agents)} agents in {district_name}")
 
-        # Limit to requested number
-        if len(matching_agents) > num_agents:
+        # Limit to requested number (unless num_agents is -1, meaning "all")
+        if num_agents == -1:
+            print(f"  ✅ Will scrape ALL {len(matching_agents)} agents")
+        elif len(matching_agents) > num_agents:
             matching_agents = matching_agents[:num_agents]
             print(f"  ℹ️  Limited to first {num_agents} agents")
         elif len(matching_agents) < num_agents:
@@ -817,13 +819,22 @@ def get_user_input():
     print("=" * 70)
 
     try:
-        num_input = input("\nHow many agents to scrape? (default: 10): ").strip()
-        num_agents = int(num_input) if num_input else 10
+        num_input = input("\nHow many agents to scrape? (enter number or 'all', default: 10): ").strip().lower()
+
+        # Check if user wants all agents
+        if num_input in ['all', 'a', '*']:
+            num_agents = -1  # Use -1 to represent "all agents"
+            print(f"\n✅ Will scrape ALL available agents")
+        elif num_input:
+            num_agents = int(num_input)
+            print(f"\n✅ Will scrape {num_agents} agents")
+        else:
+            num_agents = 10
+            print(f"\n✅ Will scrape {num_agents} agents")
 
         headless_input = input("Run in headless mode? (y/n, default: y): ").strip().lower()
         headless = headless_input not in ['n', 'no', 'false', '0']  # Default to yes unless explicitly no
 
-        print(f"\n✅ Will scrape {num_agents} agents")
         print(f"✅ Headless mode: {'ON' if headless else 'OFF'}")
         print("=" * 70)
 
@@ -848,14 +859,21 @@ def main():
     # Check for command-line arguments
     if len(sys.argv) > 1:
         try:
-            num_agents = int(sys.argv[1])
+            # Check if user wants all agents
+            if sys.argv[1].lower() in ['all', 'a', '*']:
+                num_agents = -1  # Use -1 to represent "all agents"
+                print(f"\n✅ CLI Mode: Will scrape ALL available agents")
+            else:
+                num_agents = int(sys.argv[1])
+                print(f"\n✅ CLI Mode: Will scrape {num_agents} agents")
+
             headless = len(sys.argv) > 2 and sys.argv[2].lower() == 'headless'
-            print(f"\n✅ CLI Mode: Will scrape {num_agents} agents")
             print(f"✅ Headless mode: {'ON' if headless else 'OFF'}")
             print("=" * 70)
         except ValueError:
-            print("\n❌ Invalid argument. Usage: python3 scrapper_district.py [num_agents] [headless]")
+            print("\n❌ Invalid argument. Usage: python3 scrapper_district.py [num_agents|all] [headless]")
             print("   Example: python3 scrapper_district.py 10 headless")
+            print("   Example: python3 scrapper_district.py all headless")
             sys.exit(1)
     else:
         # Get user input via CLI
@@ -872,22 +890,59 @@ def main():
         search_div = agent.scroll_to_important_links()
         agent.click_registered_agents()
 
-        # Extract districts from the table
-        districts_list, agent_district_map = agent.extract_districts_from_table()
+        # Ask user if they want to filter by district
+        print("\n" + "=" * 70)
+        print("  🗺️  DISTRICT FILTERING OPTION")
+        print("=" * 70)
+        filter_choice = input("\nDo you want to filter agents by district? (y/n, default: n): ").strip().lower()
+        use_district_filter = filter_choice in ['y', 'yes', 'true', '1']
 
-        if not districts_list or not agent_district_map:
-            print("❌ Could not extract districts from table. Exiting...")
-            return
+        if use_district_filter:
+            # Extract districts from the table
+            districts_list, agent_district_map = agent.extract_districts_from_table()
 
-        # Let user select district
-        selected_district = display_districts_menu(districts_list)
+            if not districts_list or not agent_district_map:
+                print("❌ Could not extract districts from table. Exiting...")
+                return
 
-        if selected_district is None:
-            print("❌ No district selected. Exiting...")
-            return
+            # Let user select district
+            selected_district = display_districts_menu(districts_list)
 
-        # Get agents for the selected district
-        agent_row_indices = agent.get_agents_for_district(selected_district, agent_district_map, num_agents)
+            if selected_district is None:
+                print("❌ No district selected. Exiting...")
+                return
+
+            # Get agents for the selected district
+            agent_row_indices = agent.get_agents_for_district(selected_district, agent_district_map, num_agents)
+        else:
+            # No district filtering - extract all agents directly
+            print("\n✅ Skipping district filtering - will scrape agents sequentially")
+            selected_district = "All_Districts"
+
+            # Get all row indices (simple sequential list)
+            try:
+                # Wait for table to load
+                agent.wait.until(EC.presence_of_element_located((By.TAG_NAME, "table")))
+                time.sleep(2)
+
+                all_rows = agent.driver.find_elements(By.XPATH, "//table//tr")
+                data_rows = all_rows[1:]  # Skip header row
+
+                total_agents = len(data_rows)
+                print(f"  ✅ Found {total_agents} total agents in table")
+
+                # Create simple list of row indices
+                if num_agents == -1:
+                    # Scrape all agents
+                    agent_row_indices = list(range(total_agents))
+                    print(f"  ✅ Will scrape ALL {len(agent_row_indices)} agents")
+                else:
+                    # Limit to requested number
+                    agent_row_indices = list(range(min(num_agents, total_agents)))
+                    print(f"  ✅ Will scrape first {len(agent_row_indices)} agents")
+            except Exception as e:
+                print(f"  ❌ Error getting agent rows: {e}")
+                return
 
         if not agent_row_indices:
             print(f"❌ No agents found for district: {selected_district}")
