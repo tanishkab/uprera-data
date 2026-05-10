@@ -2,8 +2,8 @@
 """
 UP RERA Web Scraper Agent - District-Based Scraping with PDF Export
 ====================================================================
-Navigates to https://up-rera.in/, lists all districts, allows user to select
-a district, then scrapes agents for that district and exports to PDF.
+Navigates to https://up-rera.in/, extracts districts from the agents table,
+allows user to select a district, then scrapes agents for that district and exports to PDF.
 
 Requirements:
     pip install selenium webdriver-manager pandas reportlab
@@ -26,7 +26,6 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import Select
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.service import Service
@@ -266,138 +265,105 @@ class UPRERAScraperAgent:
             self.driver.get("https://up-rera.in/agents")
             time.sleep(3)
 
-    def get_all_districts(self):
-        """Extract all district options from the page"""
-        print("\n🗺️  Step 5: Extracting district list...")
+    def extract_districts_from_table(self):
+        """Extract unique district values from the agents table"""
+        print("\n🗺️  Step 5: Extracting districts from table...")
 
-        districts = []
+        districts = set()
+        agent_district_map = []  # List of (agent_row_index, district) tuples
 
         try:
-            # Wait for the page to load
+            # Wait for table to load
+            self.wait.until(EC.presence_of_element_located((By.TAG_NAME, "table")))
             time.sleep(2)
 
-            # Look for district dropdown/select element
-            district_selectors = [
-                "//select[contains(@id, 'District') or contains(@name, 'District')]",
-                "//select[contains(@id, 'district') or contains(@name, 'district')]",
-                "//select[contains(@id, 'ddlDistrict')]",
-                "//select[@id='ctl00_ContentPlaceHolder1_ddlDistrict']"
-            ]
+            # Get all rows from the table
+            all_rows = self.driver.find_elements(By.XPATH, "//table//tr")
 
-            district_dropdown = None
+            if len(all_rows) <= 1:
+                print("⚠️  No data rows found in table")
+                return [], []
 
-            for selector in district_selectors:
+            # First row is header - find the district column index
+            header_row = all_rows[0]
+            header_cells = header_row.find_elements(By.TAG_NAME, "th")
+
+            district_col_index = -1
+
+            print(f"  🔍 Found {len(header_cells)} columns")
+            for idx, cell in enumerate(header_cells):
+                header_text = cell.text.strip().lower()
+                print(f"     Column {idx}: {header_text}")
+                if 'district' in header_text or 'city' in header_text:
+                    district_col_index = idx
+                    print(f"  ✅ District column found at index {district_col_index}")
+                    break
+
+            if district_col_index == -1:
+                print("  ⚠️  District column not found in header, trying to detect from data...")
+                # Try to find district column by looking at data patterns
+                # Assume it's one of the middle columns
+                district_col_index = 2  # Common position for district column
+
+            # Skip header row (first row) and get data rows
+            data_rows = all_rows[1:]
+
+            print(f"  📊 Processing {len(data_rows)} agent rows...")
+
+            for row_idx, row in enumerate(data_rows):
                 try:
-                    dropdown = self.driver.find_element(By.XPATH, selector)
-                    if dropdown.is_displayed():
-                        district_dropdown = dropdown
-                        print(f"✅ Found district dropdown: {dropdown.get_attribute('id')}")
-                        break
-                except:
+                    cells = row.find_elements(By.TAG_NAME, "td")
+
+                    if len(cells) > district_col_index:
+                        district_value = cells[district_col_index].text.strip()
+
+                        # Clean and validate district value
+                        if district_value and len(district_value) > 0 and len(district_value) < 50:
+                            # Skip if it looks like a number or registration ID
+                            if not district_value.isdigit() and not re.match(r'^[A-Z0-9\-/]+$', district_value):
+                                districts.add(district_value)
+                                agent_district_map.append({
+                                    'row_index': row_idx,
+                                    'district': district_value
+                                })
+                except Exception as e:
+                    print(f"  ⚠️  Error processing row {row_idx}: {e}")
                     continue
 
-            if district_dropdown:
-                # Get all options from the dropdown
-                select = Select(district_dropdown)
-                options = select.options
+            # Convert set to sorted list
+            districts_list = sorted(list(districts))
 
-                for option in options:
-                    district_text = option.text.strip()
-                    district_value = option.get_attribute('value')
+            print(f"  ✅ Found {len(districts_list)} unique districts")
+            print(f"  ✅ Mapped {len(agent_district_map)} agents to districts")
 
-                    # Skip empty or "Select" options
-                    if district_text and district_value and \
-                       district_text.lower() not in ['select', 'select district', '--select--', '']:
-                        districts.append({
-                            'text': district_text,
-                            'value': district_value
-                        })
-
-                print(f"✅ Found {len(districts)} districts")
-
-            else:
-                print("⚠️  District dropdown not found, trying alternative method...")
-
-                # Try to find district links or buttons
-                district_links = self.driver.find_elements(By.XPATH,
-                    "//a[contains(@href, 'district') or contains(text(), 'District')]")
-
-                for link in district_links:
-                    district_text = link.text.strip()
-                    if district_text and len(district_text) < 50:
-                        districts.append({
-                            'text': district_text,
-                            'value': district_text
-                        })
-
-                if districts:
-                    print(f"✅ Found {len(districts)} districts via alternative method")
+            return districts_list, agent_district_map
 
         except Exception as e:
-            print(f"⚠️  Error extracting districts: {e}")
+            print(f"  ❌ Error extracting districts: {e}")
             import traceback
             traceback.print_exc()
+            return [], []
 
-        return districts
+    def get_agents_for_district(self, district_name, agent_district_map, num_agents):
+        """Get row indices of agents belonging to a specific district"""
+        print(f"\n🎯 Step 6: Finding agents for district: {district_name}")
 
-    def select_district(self, district_value):
-        """Select a specific district from the dropdown"""
-        print(f"\n🎯 Step 6: Selecting district: {district_value}")
+        matching_agents = []
 
-        try:
-            # Find the district dropdown
-            district_selectors = [
-                "//select[contains(@id, 'District') or contains(@name, 'District')]",
-                "//select[contains(@id, 'district') or contains(@name, 'district')]",
-                "//select[contains(@id, 'ddlDistrict')]",
-                "//select[@id='ctl00_ContentPlaceHolder1_ddlDistrict']"
-            ]
+        for item in agent_district_map:
+            if item['district'] == district_name:
+                matching_agents.append(item['row_index'])
 
-            district_dropdown = None
+        print(f"  ✅ Found {len(matching_agents)} agents in {district_name}")
 
-            for selector in district_selectors:
-                try:
-                    dropdown = self.driver.find_element(By.XPATH, selector)
-                    if dropdown.is_displayed():
-                        district_dropdown = dropdown
-                        break
-                except:
-                    continue
+        # Limit to requested number
+        if len(matching_agents) > num_agents:
+            matching_agents = matching_agents[:num_agents]
+            print(f"  ℹ️  Limited to first {num_agents} agents")
+        elif len(matching_agents) < num_agents:
+            print(f"  ⚠️  Only {len(matching_agents)} agents available (requested {num_agents})")
 
-            if district_dropdown:
-                select = Select(district_dropdown)
-                select.select_by_value(district_value)
-                print(f"✅ Selected district")
-                time.sleep(2)
-
-                # Check if there's a search/submit button
-                search_buttons = [
-                    "//input[@type='submit' and contains(@value, 'Search')]",
-                    "//button[contains(text(), 'Search')]",
-                    "//input[@type='button' and contains(@value, 'Search')]"
-                ]
-
-                for btn_xpath in search_buttons:
-                    try:
-                        search_btn = self.driver.find_element(By.XPATH, btn_xpath)
-                        if search_btn.is_displayed():
-                            search_btn.click()
-                            print(f"✅ Clicked search button")
-                            time.sleep(3)
-                            break
-                    except:
-                        continue
-
-                return True
-            else:
-                print("⚠️  Could not find district dropdown")
-                return False
-
-        except Exception as e:
-            print(f"⚠️  Error selecting district: {e}")
-            import traceback
-            traceback.print_exc()
-            return False
+        return matching_agents
 
     def scrape_from_detail_page(self, agent_number):
         """Scrape all agent information from the currently open detail page"""
@@ -495,8 +461,8 @@ class UPRERAScraperAgent:
 
         return agent_data
 
-    def get_single_view_details_button(self, agent_number):
-        """Get a single view details button for a specific agent number"""
+    def get_view_details_button_by_row_index(self, row_index):
+        """Get view details button for a specific row index"""
         try:
             # Wait for table to load
             self.wait.until(EC.presence_of_element_located((By.TAG_NAME, "table")))
@@ -508,11 +474,8 @@ class UPRERAScraperAgent:
             # Skip the header row (first row) to get only data rows
             data_rows = all_rows[1:]  # Skip header at index 0
 
-            # Agent 1 should be at index 0 of data_rows
-            row_index = agent_number - 1
-
             if row_index >= len(data_rows):
-                print(f"  ⚠️  Agent {agent_number} not found in table")
+                print(f"  ⚠️  Row index {row_index} not found in table")
                 return None
 
             row = data_rows[row_index]
@@ -523,16 +486,16 @@ class UPRERAScraperAgent:
             if view_detail_buttons:
                 return view_detail_buttons[0]
             else:
-                print(f"  ⚠️  No View Details button for agent {agent_number}")
+                print(f"  ⚠️  No View Details button for row {row_index}")
                 return None
 
         except Exception as e:
-            print(f"  ⚠️  Error finding button for agent {agent_number}: {e}")
+            print(f"  ⚠️  Error finding button for row {row_index}: {e}")
             return None
 
-    def scrape_multiple_agents(self, num_agents):
-        """Scrape multiple agents - get button fresh for each agent to avoid stale references"""
-        print(f"\n🔄 Starting to scrape {num_agents} agents...")
+    def scrape_agents_by_row_indices(self, row_indices, district_name):
+        """Scrape agents based on their row indices in the table"""
+        print(f"\n🔄 Starting to scrape {len(row_indices)} agents from {district_name}...")
         print(f"⚡ Using optimized mode - fetching button for each agent individually")
         print("=" * 70)
 
@@ -540,9 +503,9 @@ class UPRERAScraperAgent:
         main_window = self.driver.current_window_handle
         agents_list_url = self.driver.current_url  # Save the agents list URL
 
-        for agent_number in range(1, num_agents + 1):
+        for idx, row_index in enumerate(row_indices, 1):
             try:
-                print(f"\n📋 Agent {agent_number}/{num_agents}...")
+                print(f"\n📋 Agent {idx}/{len(row_indices)} (Row {row_index + 1})...")
 
                 # Close any popup
                 try:
@@ -552,16 +515,16 @@ class UPRERAScraperAgent:
                 except:
                     pass
 
-                # Get fresh button reference for this agent
-                button = self.get_single_view_details_button(agent_number)
+                # Get fresh button reference for this row
+                button = self.get_view_details_button_by_row_index(row_index)
 
                 if button is None:
-                    print(f"  ⚠️  No valid button for agent {agent_number}, skipping")
+                    print(f"  ⚠️  No valid button for row {row_index}, skipping")
                     all_agents_data.append({
-                        'Agent_Number': agent_number,
+                        'Agent_Number': idx,
                         'Name': 'N/A',
                         'Phone': 'N/A',
-                        'District': 'N/A',
+                        'District': district_name,
                         'Registration_No': 'N/A',
                         'Registration_Date': 'N/A',
                         'Valid_Upto': 'N/A',
@@ -590,7 +553,8 @@ class UPRERAScraperAgent:
                     time.sleep(1.5)  # Wait for page to fully load
 
                     # Scrape the data
-                    agent_data = self.scrape_from_detail_page(agent_number)
+                    agent_data = self.scrape_from_detail_page(idx)
+                    agent_data['District'] = district_name  # Ensure district is set
                     all_agents_data.append(agent_data)
 
                     # Close the detail window and switch back
@@ -598,17 +562,17 @@ class UPRERAScraperAgent:
                     self.driver.switch_to.window(main_window)
                     time.sleep(0.5)
 
-                    print(f"  ✓ Agent {agent_number} complete")
+                    print(f"  ✓ Agent {idx} complete")
 
                 else:
                     # Modal or same page - skip this agent
                     print(f"  ⚠️  Detail modal/page opened - skipping this agent")
 
                     all_agents_data.append({
-                        'Agent_Number': agent_number,
+                        'Agent_Number': idx,
                         'Name': 'SKIPPED_MODAL',
                         'Phone': 'N/A',
-                        'District': 'N/A',
+                        'District': district_name,
                         'Registration_No': 'N/A',
                         'Registration_Date': 'N/A',
                         'Valid_Upto': 'N/A',
@@ -616,7 +580,7 @@ class UPRERAScraperAgent:
                         'Address': 'N/A'
                     })
 
-                    print(f"  ⏭️  Agent {agent_number} skipped")
+                    print(f"  ⏭️  Agent {idx} skipped")
 
                     # Navigate back to agents list for next iteration
                     print(f"  ↩️  Navigating back to agents list...")
@@ -624,15 +588,15 @@ class UPRERAScraperAgent:
                     time.sleep(1.5)
 
             except Exception as e:
-                print(f"  ❌ Error with agent {agent_number}: {e}")
+                print(f"  ❌ Error with agent {idx} (row {row_index}): {e}")
                 import traceback
                 traceback.print_exc()
 
                 all_agents_data.append({
-                    'Agent_Number': agent_number,
+                    'Agent_Number': idx,
                     'Name': 'ERROR',
                     'Phone': 'N/A',
-                    'District': 'N/A',
+                    'District': district_name,
                     'Registration_No': 'N/A',
                     'Registration_Date': 'N/A',
                     'Valid_Upto': 'N/A',
@@ -659,24 +623,28 @@ class UPRERAScraperAgent:
 
         return all_agents_data
 
-    def save_to_csv(self, data, filename="rera_agents_district.csv"):
+    def save_to_csv(self, data, district_name, filename=None):
         """Save scraped data to CSV"""
-        if data:
-            df = pd.DataFrame(data)
-            df.to_csv(filename, index=False, encoding='utf-8-sig')
-            print(f"\n💾 Data saved to: {filename}")
-            print(f"📊 Total records: {len(data)}")
-
-            # Show summary
-            phone_count = sum(1 for agent in data if agent['Phone'] != 'N/A')
-            email_count = sum(1 for agent in data if agent['Email'] != 'N/A')
-            print(f"📞 Phone numbers found: {phone_count}/{len(data)}")
-            print(f"📧 Emails found: {email_count}/{len(data)}")
-
-            return filename
-        else:
+        if not data:
             print("\n⚠️  No data to save")
             return None
+
+        if filename is None:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"rera_agents_{district_name}_{timestamp}.csv"
+
+        df = pd.DataFrame(data)
+        df.to_csv(filename, index=False, encoding='utf-8-sig')
+        print(f"\n💾 Data saved to: {filename}")
+        print(f"📊 Total records: {len(data)}")
+
+        # Show summary
+        phone_count = sum(1 for agent in data if agent['Phone'] != 'N/A')
+        email_count = sum(1 for agent in data if agent['Email'] != 'N/A')
+        print(f"📞 Phone numbers found: {phone_count}/{len(data)}")
+        print(f"📧 Emails found: {email_count}/{len(data)}")
+
+        return filename
 
     def save_to_pdf(self, data, district_name, filename=None):
         """Save scraped data to PDF with formatted table"""
@@ -838,7 +806,7 @@ def display_districts_menu(districts):
         return None
 
     for idx, district in enumerate(districts, 1):
-        print(f"  {idx:2d}. {district['text']}")
+        print(f"  {idx:2d}. {district}")
 
     print("=" * 70)
 
@@ -854,7 +822,7 @@ def display_districts_menu(districts):
 
             if 1 <= choice_num <= len(districts):
                 selected = districts[choice_num - 1]
-                print(f"\n✅ Selected: {selected['text']}")
+                print(f"\n✅ Selected: {selected}")
                 return selected
             else:
                 print(f"❌ Please enter a number between 1 and {len(districts)}")
@@ -928,45 +896,45 @@ def main():
         search_div = agent.scroll_to_important_links()
         agent.click_registered_agents()
 
-        # Get all districts
-        districts = agent.get_all_districts()
+        # Extract districts from the table
+        districts_list, agent_district_map = agent.extract_districts_from_table()
 
-        if not districts:
-            print("❌ Could not find any districts. Proceeding without district filter...")
-            selected_district = None
-        else:
-            # Let user select district
-            selected_district = display_districts_menu(districts)
+        if not districts_list or not agent_district_map:
+            print("❌ Could not extract districts from table. Exiting...")
+            return
 
-            if selected_district is None:
-                print("❌ No district selected. Exiting...")
-                return
+        # Let user select district
+        selected_district = display_districts_menu(districts_list)
 
-            # Select the district
-            success = agent.select_district(selected_district['value'])
+        if selected_district is None:
+            print("❌ No district selected. Exiting...")
+            return
 
-            if not success:
-                print("⚠️  Could not filter by district. Proceeding with all agents...")
+        # Get agents for the selected district
+        agent_row_indices = agent.get_agents_for_district(selected_district, agent_district_map, num_agents)
 
-        # Scrape multiple agents
+        if not agent_row_indices:
+            print(f"❌ No agents found for district: {selected_district}")
+            return
+
+        # Scrape agents
         print(f"\n{'=' * 70}")
         print(f"  🚀 STARTING SCRAPING PROCESS")
         print(f"{'=' * 70}")
 
         scrape_start_time = time.time()
-        agents_data = agent.scrape_multiple_agents(num_agents)
+        agents_data = agent.scrape_agents_by_row_indices(agent_row_indices, selected_district)
         scrape_duration = time.time() - scrape_start_time
 
         # Save to CSV
         csv_file = None
         if agents_data:
-            csv_file = agent.save_to_csv(agents_data)
+            csv_file = agent.save_to_csv(agents_data, selected_district)
 
         # Save to PDF
         pdf_file = None
         if agents_data:
-            district_name = selected_district['text'] if selected_district else "All_Districts"
-            pdf_file = agent.save_to_pdf(agents_data, district_name)
+            pdf_file = agent.save_to_pdf(agents_data, selected_district)
 
         # Calculate and display timing
         total_duration = time.time() - start_time
@@ -983,7 +951,7 @@ def main():
         print(f"\n⏱️  Performance Metrics:")
         print(f"   • Scraping time: {scrape_duration:.2f} seconds ({scrape_duration/60:.2f} minutes)")
         print(f"   • Total execution time: {total_duration:.2f} seconds ({total_duration/60:.2f} minutes)")
-        print(f"   • Average time per agent: {scrape_duration/num_agents:.2f} seconds")
+        print(f"   • Average time per agent: {scrape_duration/len(agents_data):.2f} seconds")
         print(f"   • Script ended at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
         print("\n" + "=" * 70)
