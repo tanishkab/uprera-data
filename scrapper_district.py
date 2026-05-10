@@ -350,9 +350,15 @@ class UPRERAScraperAgent:
 
         matching_agents = []
 
-        for item in agent_district_map:
-            if item['district'] == district_name:
+        # If "All Districts", get all agents
+        if district_name == "All Districts":
+            for item in agent_district_map:
                 matching_agents.append(item['row_index'])
+        else:
+            # Filter by specific district
+            for item in agent_district_map:
+                if item['district'] == district_name:
+                    matching_agents.append(item['row_index'])
 
         print(f"  ✅ Found {len(matching_agents)} agents in {district_name}")
 
@@ -522,7 +528,9 @@ class UPRERAScraperAgent:
 
                     # Scrape the data
                     agent_data = self.scrape_from_detail_page(idx)
-                    agent_data['District'] = district_name  # Ensure district is set
+                    # Only override district if not "All Districts" and district is N/A
+                    if district_name != "All Districts" and agent_data['District'] == 'N/A':
+                        agent_data['District'] = district_name
                     all_agents_data.append(agent_data)
 
                     # Close the detail window and switch back
@@ -591,7 +599,9 @@ class UPRERAScraperAgent:
 
         if filename is None:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"rera_agents_{district_name}_{timestamp}.csv"
+            # Sanitize district name for filename
+            safe_district = district_name.replace(" ", "_").replace("/", "_")
+            filename = f"rera_agents_{safe_district}_{timestamp}.csv"
 
         df = pd.DataFrame(data)
         df.to_csv(filename, index=False, encoding='utf-8-sig')
@@ -614,7 +624,9 @@ class UPRERAScraperAgent:
 
         if filename is None:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"rera_agents_{district_name}_{timestamp}.pdf"
+            # Sanitize district name for filename
+            safe_district = district_name.replace(" ", "_").replace("/", "_")
+            filename = f"rera_agents_{safe_district}_{timestamp}.pdf"
 
         print(f"\n📄 Creating PDF: {filename}")
 
@@ -762,6 +774,10 @@ def display_districts_menu(districts):
         print("❌ No districts found!")
         return None
 
+    # Add "All Districts" option at the top
+    print(f"   0. All Districts (No Filter)")
+    print()
+
     for idx, district in enumerate(districts, 1):
         print(f"  {idx:2d}. {district}")
 
@@ -769,7 +785,7 @@ def display_districts_menu(districts):
 
     while True:
         try:
-            choice = input(f"\nSelect district (1-{len(districts)}): ").strip()
+            choice = input(f"\nSelect district (0 for all, 1-{len(districts)} for specific): ").strip()
 
             if not choice:
                 print("❌ Please enter a number")
@@ -777,12 +793,15 @@ def display_districts_menu(districts):
 
             choice_num = int(choice)
 
-            if 1 <= choice_num <= len(districts):
+            if choice_num == 0:
+                print(f"\n✅ Selected: All Districts (No Filter)")
+                return "All Districts"
+            elif 1 <= choice_num <= len(districts):
                 selected = districts[choice_num - 1]
                 print(f"\n✅ Selected: {selected}")
                 return selected
             else:
-                print(f"❌ Please enter a number between 1 and {len(districts)}")
+                print(f"❌ Please enter a number between 0 and {len(districts)}")
 
         except ValueError:
             print("❌ Please enter a valid number")
@@ -801,8 +820,8 @@ def get_user_input():
         num_input = input("\nHow many agents to scrape? (default: 10): ").strip()
         num_agents = int(num_input) if num_input else 10
 
-        headless_input = input("Run in headless mode? (y/n, default: n): ").strip().lower()
-        headless = headless_input in ['y', 'yes', 'true', '1']
+        headless_input = input("Run in headless mode? (y/n, default: y): ").strip().lower()
+        headless = headless_input not in ['n', 'no', 'false', '0']  # Default to yes unless explicitly no
 
         print(f"\n✅ Will scrape {num_agents} agents")
         print(f"✅ Headless mode: {'ON' if headless else 'OFF'}")
